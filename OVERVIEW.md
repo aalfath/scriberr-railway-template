@@ -4,7 +4,7 @@ Scriberr is an open-source, self-hosted audio transcription app. Upload or recor
 
 ## About Hosting Scriberr
 
-This template runs one Scriberr v1.2.0 service built from a public GitHub repo, with a Railway volume at `/app/data` for the SQLite database, uploads, transcripts and downloaded models. The image ships a CPU build of WhisperX, so the app is ready seconds after the first start instead of installing several GB of GPU packages on boot. An admin account is created on first boot from generated variables, so nobody can claim your instance through the sign-up screen. Transcription is CPU-heavy: the web app runs in 0.5 GB, but a transcription job needs about 1.5 to 2 GB of RAM, so use the Hobby plan or higher for real work.
+This template runs one Scriberr v1.2.0 service built from a public GitHub repo, with a Railway volume at `/app/data` for the SQLite database, uploads, transcripts and downloaded models. The image ships a CPU build of WhisperX, so the app is ready seconds after the first start instead of installing several GB of GPU packages on boot. An admin account is created on first boot from generated variables, so nobody can claim your instance through the sign-up screen. Transcription is CPU-heavy: the web app runs in 0.5 GB, but a transcription job needs about 1.5 to 2 GB of RAM, so give the service 2 GB (Hobby plan or higher) for real work.
 
 ## Common Use Cases
 
@@ -26,9 +26,9 @@ This template runs one Scriberr v1.2.0 service built from a public GitHub repo, 
 
 ### Implementation Details
 
-**After deploy:** open the service's public URL and sign in as `admin` with the password in the service's `ADMIN_PASSWORD` variable (Variables tab). Change it under Settings if you like. Upload an audio file and press Transcribe. The first job downloads the chosen Whisper model (about 0.5 GB for `small`) into the volume, so it takes a minute longer than later jobs.
+**After deploy:** open the service's public URL and sign in as `admin` with the password in the service's `ADMIN_PASSWORD` variable (Variables tab). Change it under Settings if you like. Upload an audio file and press Transcribe. A default profile, "CPU - Whisper small (Int8)", is already selected. The first job downloads the Whisper, alignment and voice-detection models (about 1.3 GB) into the volume, so it takes a minute longer than later jobs.
 
-**Memory:** the server idles at about 50 MB, but each WhisperX job on CPU needs about 1.5 GB (`small`, Int8) to 2 GB (`small`, Float32, the default). On a service with less than 1.4 GB of RAM, jobs fail at once with a clear "Not enough memory" message instead of being killed half-way; raise the service's memory limit on the Hobby plan or higher. Larger models (`medium`, `large-v3`) need 3 to 6 GB and are slow on CPU. Picking Int8 in the transcription settings is the fastest and lightest choice.
+**Memory:** the server idles at about 50 MB, but each WhisperX job on CPU needs about 1.5 GB (`small`, Int8, the template's default profile) to 2 GB (`small`, Float32). Tested on Railway: an 11-second clip finished in about 30 s on a 2 GB / 2 vCPU service with both settings. On a service with less than 1.4 GB of RAM (for example the Free plan's 0.5 GB), jobs fail at once with a clear "Not enough memory" message instead of being killed half-way, and the web app keeps running; raise the service's memory limit on the Hobby plan or higher. Larger models (`medium`, `large-v3`) need 3 to 6 GB and are slow on CPU.
 
 **Not included:** Railway has no GPUs, so NVIDIA Parakeet, Canary and Sortformer models are switched off. Speaker labels (diarization) with pyannote need a free Hugging Face token entered in the transcription settings and about 3 GB of RAM. Summaries and chat need an OpenAI-compatible API key or an Ollama server, added under Settings, LLM.
 
