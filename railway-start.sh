@@ -29,11 +29,11 @@ echo "railway-start: using $OMP_NUM_THREADS CPU thread(s)"
 
 cd /app
 export HOME=/home/appuser USER=appuser
-as_app() { setpriv --reuid=appuser --regid=appuser --init-groups -- "$@"; }
 
 bootstrap_admin() {
   local port=18080 pid i status body code
-  HOST=127.0.0.1 PORT=$port as_app /app/scriberr &
+  # setpriv runs Scriberr in place (no subshell), so $! is the server itself and kill reaches it.
+  HOST=127.0.0.1 PORT=$port setpriv --reuid=appuser --regid=appuser --init-groups -- /app/scriberr &
   pid=$!
   for i in $(seq 1 300); do
     if ! kill -0 "$pid" 2>/dev/null; then
@@ -57,6 +57,9 @@ bootstrap_admin() {
   fi
   rm -f /tmp/register.out
   kill "$pid"; wait "$pid" || true
+  if curl -fs -o /dev/null "http://127.0.0.1:$port/health" 2>/dev/null; then
+    echo "railway-start: first-start server did not stop" >&2; exit 1
+  fi
 }
 
 has_users() {
