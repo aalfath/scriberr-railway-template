@@ -52,6 +52,35 @@ bootstrap_admin() {
       kill "$pid"; exit 1
     fi
     echo "railway-start: created admin account '$ADMIN_USERNAME'"
+    # Default transcription profile tuned for CPU: Whisper small, Int8 (fastest, lowest RAM).
+    token=$(python3 -c 'import json; print(json.load(open("/tmp/register.out"))["token"])')
+    profile=$(python3 - <<'PY'
+import json
+p = {"model_family": "whisper", "model": "small", "model_cache_only": False, "device": "cpu",
+     "device_index": 0, "batch_size": 4, "compute_type": "int8", "threads": 0, "output_format": "all",
+     "verbose": True, "task": "transcribe", "interpolate_method": "nearest", "no_align": False,
+     "return_char_alignments": False, "vad_method": "pyannote", "vad_onset": 0.5, "vad_offset": 0.363,
+     "chunk_size": 30, "diarize": False, "diarize_model": "pyannote", "speaker_embeddings": False,
+     "temperature": 0, "best_of": 5, "beam_size": 5, "patience": 1.0, "length_penalty": 1.0,
+     "suppress_numerals": False, "condition_on_previous_text": False, "fp16": False,
+     "temperature_increment_on_fallback": 0.2, "compression_ratio_threshold": 2.4,
+     "logprob_threshold": -1.0, "no_speech_threshold": 0.6, "highlight_words": False,
+     "segment_resolution": "sentence", "print_progress": False,
+     "attention_context_left": 256, "attention_context_right": 256}
+print(json.dumps({"name": "CPU - Whisper small (Int8)", "is_default": True,
+                  "description": "Railway default: fastest and lightest on CPU", "parameters": p}))
+PY
+)
+    pid_json=$(curl -fsS -H "Authorization: Bearer $token" -H 'Content-Type: application/json' \
+               -d "$profile" "http://127.0.0.1:$port/api/v1/profiles/" || true)
+    prof_id=$(printf '%s' "$pid_json" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("id",""))' 2>/dev/null || true)
+    if [ -n "$prof_id" ]; then
+      curl -fsS -o /dev/null -H "Authorization: Bearer $token" -H 'Content-Type: application/json' \
+           -d "{\"profile_id\":\"$prof_id\"}" "http://127.0.0.1:$port/api/v1/user/default-profile" || true
+      echo "railway-start: created default CPU transcription profile"
+    else
+      echo "railway-start: could not create the default profile (continuing)" >&2
+    fi
   else
     echo "railway-start: admin account already exists"
   fi
